@@ -1,17 +1,17 @@
 #include "Beacon.h"
 
 Beacon::Beacon()
-	: x_(0.), y_(0.), id_("0"), rssiRef_(-59), pathLoss_(2.0), height_(0.0)
+	: id_("0"), x_(0.), y_(0.), height_(0.0), rssiRef_(-59), pathLoss_(2.0)
 {
 }
 
 Beacon::Beacon(const Beacon& beacon)
-	:x_(beacon.x_)
+	:id_(beacon.id_)
+	,x_(beacon.x_)
 	,y_(beacon.y_)
-	,id_(beacon.id_)
+	,height_(beacon.height_)
 	,rssiRef_(beacon.pathLoss_)
 	,pathLoss_(beacon.pathLoss_)
-	,height_(beacon.height_)
 {
 }
 
@@ -30,19 +30,19 @@ void Beacon::setY(const double y)
 	y_ = y;
 }
 
-void Beacon::setRssiPref(const int pref)
+void Beacon::setHeight(const double height)
 {
-	rssiRef_ = pref;
+	height_ = height;
+}
+
+void Beacon::setRssiPref(const double rssiRef)
+{
+	rssiRef_ = rssiRef;
 }
 
 void Beacon::setPathLoss(const double pathLoss)
 {
 	pathLoss_ = pathLoss;
-}
-
-void Beacon::setHeight(const double height)
-{
-	height_ = height;
 }
 
 const char* Beacon::getId() const
@@ -60,7 +60,12 @@ double Beacon::getY() const
 	return y_;
 }
 
-int Beacon::getRssiPref() const
+double Beacon::getHeight() const
+{
+	return height_;
+}
+
+double Beacon::getRssiRef() const
 {
 	return rssiRef_;
 }
@@ -68,11 +73,6 @@ int Beacon::getRssiPref() const
 double Beacon::getPathLoss() const
 {
 	return pathLoss_;
-}
-
-double Beacon::getHeight() const
-{
-	return height_;
 }
 
 IBeacon::IBeacon()
@@ -107,12 +107,12 @@ const char * IBeacon::getUuid() const
 }
 
 
-unsigned IBeacon::getMajor() const
+int IBeacon::getMajor() const
 {
 	return major_;
 }
 
-unsigned IBeacon::getMinor() const
+int IBeacon::getMinor() const
 {
 	return minor_;
 }
@@ -129,8 +129,7 @@ BeaconMeas::BeaconMeas(Beacon* beacon, double rssi)
 }
 
 BeaconMeas::BeaconMeas(const BeaconMeas& beaconMeas)
-	: beaconId_(beaconMeas.beaconId_)
-	, beaconPtr_(beaconMeas.beaconPtr_)
+	: beaconPtr_(beaconMeas.beaconPtr_)
 	, rssi_(beaconMeas.rssi_)
 {
 }
@@ -138,11 +137,6 @@ BeaconMeas::BeaconMeas(const BeaconMeas& beaconMeas)
 BeaconMeas::~BeaconMeas()
 {
 	beaconPtr_ = nullptr;
-}
-
-void BeaconMeas::setBeaconId(const std::string & beaconId)
-{
-	beaconId_ = beaconId;
 }
 
 void BeaconMeas::setBeaconPtr(const Beacon* beaconPtr)
@@ -153,12 +147,6 @@ void BeaconMeas::setBeaconPtr(const Beacon* beaconPtr)
 void BeaconMeas::setRssi(const double rssi)
 {
 	rssi_ = rssi;
-}
-
-
-const char * BeaconMeas::getBeaconId() const
-{
-	return beaconId_.c_str();
 }
 
 Beacon* BeaconMeas::getBeaconPtr() const
@@ -173,7 +161,13 @@ double BeaconMeas::getRssi() const
 
 double BeaconMeas::calDistFromRssi() const
 {
-	return pow(10, (beaconPtr_->getRssiPref() - rssi_) / (10 * beaconPtr_->getPathLoss()));
+	return pow(10, (beaconPtr_->getRssiRef() - rssi_) / (10 * beaconPtr_->getPathLoss()));
+}
+
+double BeaconMeas::calPlanarDistFromRssi() const
+{
+	double distance = calDistFromRssi();
+	return sqrt(distance*distance - getBeaconPtr()->getHeight()*getBeaconPtr()->getHeight());
 }
 
 
