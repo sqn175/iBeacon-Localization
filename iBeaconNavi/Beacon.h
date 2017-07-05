@@ -10,9 +10,10 @@
 #pragma once
 #include <string>
 
+namespace BIP {
+
 // Beacon is transmitter emitting the signal, that we can use to obtain pseudoDistances
 // and process trilateration navigation algorithms
-
 class Beacon
 {
 public:
@@ -85,16 +86,20 @@ public:
 
 	void setBeaconPtr(const Beacon* beaconPtr);
 	void setRssi(const double rssi);
+	void setTimeStamp(const double timeStamp);
 
 	Beacon* getBeaconPtr() const;
 	double getRssi() const;
+	const double getTimeStamp() const;
 
 	// calculate the corresponding distance of rssi value
-	double calDistFromRssi() const;			 // 3-dimension distance
-	double calPlanarDistFromRssi() const;    // planar distance, height ignored
+	double calcDistFromRssi() const;			 // 3-dimension distance
+	double calcPlanarDistFromRssi() const;       // planar distance, height ignored
 
 private:
 	Beacon* beaconPtr_;			// pointer to beacon from which we got measurement
 	double rssi_;				// RSSI of the measurement
-
+	double timeStamp_;			// timestamp of current measurement, epoch time in milliseconds, e.g.1499218065493
 };
+
+} // namespace BIP

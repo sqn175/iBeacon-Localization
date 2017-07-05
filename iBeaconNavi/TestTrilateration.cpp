@@ -8,10 +8,12 @@
 int main()
 {
 	int measCnt = 0;  // iBeacon measurement count
+
 	std::string fileName = "scan_bluetooth3.txt";
-	std::vector<Beacon> beaconsMap;
+	std::vector<BIP::Beacon> beaconsMap;
 	// Initialize beacon map
-	Beacon beacon;
+	// test scenario. Set 3 beacons on the map
+	BIP::Beacon beacon;
 	// iBeacon 1
 	beacon.setBeaconId("19:18:FC:00:E6:58");
 	beacon.setX(3.60);
@@ -30,6 +32,9 @@ int main()
 
 	// read beacon measurements from file
 	std::ifstream bleScanFile( fileName );
+
+	// write beacon1 rssi value to file, check the rssi value distribution
+	std::ofstream staticRssiFile("rssi.txt");
 	
 	if ( !bleScanFile.is_open() )
 	{
@@ -46,7 +51,7 @@ int main()
 		if ( strcmp( header.c_str(), "-") == 0 )
 		{
 			measCnt++;
-			BeaconMeas curBeaconMeas;
+			BIP::BeaconMeas curBeaconMeas;
 			std::getline(bleScanFile, line);
 			std::getline(bleScanFile, line);
 			// read mac address of the iBeacon emitting this measurement
@@ -56,7 +61,6 @@ int main()
 			{
 				if ( std::strcmp(macAddress.c_str(), (*it).getId()) == 0)
 				{
-					curBeaconMeas.setBeaconId(macAddress);
 					curBeaconMeas.setBeaconPtr( &(*it) );
 				}
 			}
@@ -64,11 +68,18 @@ int main()
 			std::getline(bleScanFile, line);
 			std::getline(bleScanFile, line);
 			curBeaconMeas.setRssi(std::stoi(line.substr(17, 3)));
-			
+
+			if (strcmp(macAddress.c_str(), "19:18:FC:00:E6:58") == 0)
+			{
+				// write rssi value to txt file
+				staticRssiFile << line.substr(17, 3) << "\n";
+			}
+			// Now, we get the new beaconMeas, process it
+
 		}
-		Beacon curBeacon;
+		BIP::Beacon curBeacon;
 	}
 	bleScanFile.close();
 		
-
+	staticRssiFile.close();
 }

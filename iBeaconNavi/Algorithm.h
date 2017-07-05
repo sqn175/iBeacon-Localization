@@ -1,4 +1,4 @@
-/** Trilateration.h
+/** Algorithm.h
 *
 * Author: Qin Shi
 * Date: 2017/06/29
@@ -8,16 +8,21 @@
 */
 #pragma once
 
-#include <queue>
+#include <vector>
+#include <list>
 #include <cmath>
+#include <map>
 
 #include "Beacon.h"
+
+
+namespace BIP {
 
 class Trilateration
 {
 public:
 	Trilateration();
-	~Trilateration();
+	~Trilateration() {};
 
 	// returns the coordinates of the device (meter)
 	double getPosX() const;
@@ -25,19 +30,34 @@ public:
 	double getPosZ() const;
 
 	int getDim() const;
+	double getGroupInterval() const;
 
+	// set coordinate dimension, 2 for planar case
 	void setDim(const int);
-	
+
+	// we maintain the measurements in a window, which length is groupInterval_ in milliseconds
+	void setGroupInterval(const double);
+
 	// calculate coordinates using three prepared Beacon measurements 
 	void calPos(const std::vector<BeaconMeas> preparedBeaconMeas);
 
-	void updateMeasurements(BeaconMeas curBeaconMeas);
-	
+	// 
+	void addMeas(BeaconMeas curBeaconMeas);
+
 
 private:
-	int dim_;						    // coordinate dimension, e.g 2 for planar coordinates x-y
-	double posX_, posY_, posZ_;			// the coordinates of device derived from iBeacon measurements (meter)
-	std::queue<BeaconMeas> measQueue_;  // measurements queue buffer
-	int maxQueueSize_;					// the max measurements number that measQueue can buffer
+	int dim_;										 // coordinate dimension, e.g 2 for planar coordinates x-y
+	double posX_, posY_, posZ_;						 // the coordinates of device derived from iBeacon measurements (meter)
+	std::map<std::string, std::list<BeaconMeas>> measGroups_;  // measGroups_ contains subgroups grouped by beacon id
+	int groupInterval_;								 // the lasting interval of a subgroup measurements should not exceed groupInterval
+													 // we specify the size as time interval in milliseconds
+
+
+	std::vector<double> solveLinearSystem(            //solve overdetermined system if
+		std::vector<double> matrixA,                  //pseudo distance equations
+		std::vector <double> b);
+
+	std::vector<BeaconMeas> prepareBeaconMeas();     // prepare measurements feed to func calPos()
 };
 
+} // namespace BIP
