@@ -6,12 +6,12 @@ BIP::Beacon::Beacon()
 }
 
 BIP::Beacon::Beacon(const Beacon& beacon)
-	:id_(beacon.id_)
-	,x_(beacon.x_)
-	,y_(beacon.y_)
-	,height_(beacon.height_)
-	,rssiRef_(beacon.pathLoss_)
-	,pathLoss_(beacon.pathLoss_)
+	: id_(beacon.id_)
+	, x_(beacon.x_)
+	, y_(beacon.y_)
+	, height_(beacon.height_)
+	, rssiRef_(beacon.rssiRef_)
+	, pathLoss_(beacon.pathLoss_)
 {
 }
 
@@ -177,6 +177,7 @@ double BIP::BeaconMeas::calcDistFromRssi() const
 double BIP::BeaconMeas::calcPlanarDistFromRssi() const
 {
 	double distance = calcDistFromRssi();
+	// TODO: check if distance > height
 	return sqrt(distance*distance - getBeaconPtr()->getHeight()*getBeaconPtr()->getHeight());
 }
 

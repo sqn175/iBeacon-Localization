@@ -18,8 +18,10 @@ class Beacon
 {
 public:
 	Beacon();
-	Beacon(const Beacon&);
-	~Beacon() {};
+	Beacon(const Beacon&);    // copy constructor
+	virtual ~Beacon() {};
+
+	//const Beacon &operator=(const Beacon &beacon);
 
 	//specify unique beacon identifier that allows us to distinguish beacon 
 	// and its measurements
@@ -58,7 +60,7 @@ class IBeacon : public Beacon
 {
 public:
 	IBeacon();
-	IBeacon(const IBeacon&);
+	IBeacon(const IBeacon&); // copy constructor
 	~IBeacon() {};
 
 	void setUuid(const char* uuid);

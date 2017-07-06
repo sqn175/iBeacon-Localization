@@ -127,6 +127,35 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 
 }
 
+void BIP::Trilateration::calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas)
+{
+	double normalizeCoefficient = 0.0;
+	//take revert values, because lower distance then bigger weight
+	for (unsigned int i = 0; i < preparedBeaconMeas.size(); i++)
+		normalizeCoefficient += 1.0 / fabs(preparedBeaconMeas[i].calcDistFromRssi() );
+
+	std::vector <double> weight(preparedBeaconMeas.size(), 0.0);
+
+	for (unsigned int i = 0; i < preparedBeaconMeas.size(); i++)
+	{
+		if (preparedBeaconMeas[i].getBeaconPtr() == 0)
+		{
+			// TODO: log
+		}
+		// calculate probability of being at beacons x,y coordinates
+		weight[i] += 1.0 / (fabs(preparedBeaconMeas[i].calcDistFromRssi() *
+			normalizeCoefficient));
+
+		double beaconX = 0, beaconY = 0.;
+		beaconX = preparedBeaconMeas[i].getBeaconPtr()->getX();
+		beaconY = preparedBeaconMeas[i].getBeaconPtr()->getY();
+
+		//find final coordinates according to probability
+		posX_ += weight[i] * beaconX;
+		posY_ += weight[i] * beaconY;
+	}
+}
+
 std::vector<double> BIP::Trilateration::solveLinearSystem(std::vector<double> matrixA, std::vector<double> b)
 {
 	int nOfEquations = b.size();

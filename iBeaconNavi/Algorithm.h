@@ -10,7 +10,6 @@
 
 #include <vector>
 #include <list>
-#include <cmath>
 #include <map>
 
 #include "Beacon.h"
@@ -38,12 +37,14 @@ public:
 	// we maintain the measurements in a window, which length is groupInterval_ in milliseconds
 	void setGroupInterval(const double);
 
-	// calculate coordinates using three prepared Beacon measurements 
+	// calculate coordinates using three prepared Beacon measurements, method: trilateration 
 	void calPos(const std::vector<BeaconMeas> preparedBeaconMeas);
 
-	// 
+	// add a new Beacon measurement
 	void addMeas(BeaconMeas curBeaconMeas);
 
+	// calculate coordiante, lower distance then bigger weight, closer to that beacon
+	void calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas);
 
 private:
 	int dim_;										 // coordinate dimension, e.g 2 for planar coordinates x-y
