@@ -94,6 +94,9 @@ public:
 	double getRssi() const;
 	const double getTimeStamp() const;
 
+	bool operator<(const BeaconMeas& entry)const;
+	bool operator>(const BeaconMeas& entry)const;
+
 	// calculate the corresponding distance of rssi value
 	double calcDistFromRssi() const;			 // 3-dimension distance
 	double calcPlanarDistFromRssi() const;       // planar distance, height ignored

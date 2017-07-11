@@ -31,34 +31,46 @@ public:
 	int getDim() const;
 	double getGroupInterval() const;
 
-	// set coordinate dimension, 2 for planar case
+	// set coordinate dimension, 2 for planar case, 1 for line case
 	void setDim(const int);
 
 	// we maintain the measurements in a window, which length is groupInterval_ in milliseconds
 	void setGroupInterval(const double);
 
-	// calculate coordinates using three prepared Beacon measurements, method: trilateration 
-	void calPos(const std::vector<BeaconMeas> preparedBeaconMeas);
-
 	// add a new Beacon measurement
 	void addMeas(BeaconMeas curBeaconMeas);
+
+	std::vector<double> calPos();
+private:
+	// coordinate dimension, e.g 2 for planar coordinates x-y
+	int dim_;
+
+	// the coordinates of device derived from iBeacon measurements (meter)
+	double posX_, posY_, posZ_;
+
+	// measGroups_ contains subgroups grouped by beacon id
+	std::map<std::string, std::list<BeaconMeas>> measGroups_; 
+
+	// the lasting interval of a subgroup measurements should not exceed groupInterval
+	// we specify the size as time interval in milliseconds
+	double groupInterval_;
+
+	// the newest measurement timestamp
+	double curTimeStamp;
+
+	// prepare measurements feed to func calTriPos()
+	std::vector<BeaconMeas> prepareBeaconMeas();
 
 	// calculate coordiante, lower distance then bigger weight, closer to that beacon
 	void calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas);
 
-private:
-	int dim_;										 // coordinate dimension, e.g 2 for planar coordinates x-y
-	double posX_, posY_, posZ_;						 // the coordinates of device derived from iBeacon measurements (meter)
-	std::map<std::string, std::list<BeaconMeas>> measGroups_;  // measGroups_ contains subgroups grouped by beacon id
-	int groupInterval_;								 // the lasting interval of a subgroup measurements should not exceed groupInterval
-													 // we specify the size as time interval in milliseconds
-
-
-	std::vector<double> solveLinearSystem(            //solve overdetermined system if
-		std::vector<double> matrixA,                  //pseudo distance equations
+	// calculate coordinates using three prepared Beacon measurements, method: trilateration 
+	void calTriPos(const std::vector<BeaconMeas> preparedBeaconMeas);
+	//solve overdetermined system if pseudo distance equations
+	std::vector<double> solveLinearSystem(            
+		std::vector<double> matrixA,               
 		std::vector <double> b);
 
-	std::vector<BeaconMeas> prepareBeaconMeas();     // prepare measurements feed to func calPos()
 };
 
 } // namespace BIP

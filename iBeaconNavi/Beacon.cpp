@@ -169,6 +169,16 @@ const double BIP::BeaconMeas::getTimeStamp() const
 	return timeStamp_;
 }
 
+bool BIP::BeaconMeas::operator<(const BeaconMeas& entry) const
+{
+	return rssi_ < entry.rssi_;
+}
+
+bool BIP::BeaconMeas::operator>(const BeaconMeas& entry) const
+{
+	return entry < *this;
+}
+
 double BIP::BeaconMeas::calcDistFromRssi() const
 {
 	return pow(10, (beaconPtr_->getRssiRef() - rssi_) / (10 * beaconPtr_->getPathLoss()));

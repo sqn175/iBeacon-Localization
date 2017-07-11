@@ -33,7 +33,7 @@ int main()
 	ibeacon.setY(0.0);
 	ibeaconsMap.push_back(ibeacon);
 
-	// test func calPos(const std::vector<BeaconMeas> preparedBeaconMeas)
+	// test func calTriPos(const std::vector<BeaconMeas> preparedBeaconMeas)
 	BIP::Trilateration tri;
 	std::vector<BIP::BeaconMeas> preparedBM;
 	BIP::BeaconMeas bm;
@@ -42,15 +42,15 @@ int main()
 	bm.setRssi(-59);
 	preparedBM.push_back(bm);
 
-	bm.setBeaconPtr(&ibeaconsMap[1]);
+	/*bm.setBeaconPtr(&ibeaconsMap[1]);
 	bm.setRssi(-76);
-	preparedBM.push_back(bm);
+	preparedBM.push_back(bm);*/
 
 	bm.setBeaconPtr(&ibeaconsMap[2]);
-	bm.setRssi(-57);
-	preparedBM.push_back(bm);
+	bm.setRssi(-57); 
+	preparedBM.push_back(bm); 
 
-	tri.calWeightPos(preparedBM);
+//	tri.calWeightPos(preparedBM);
 
 	// read beacon measurements from file
 	std::ifstream bleScanFile( fileName );
@@ -97,6 +97,7 @@ int main()
 				staticRssiFile << line.substr(17, 3) << "\n";
 			}
 			// Now, we get the new beaconMeas, process it
+			
 
 		}
 		BIP::Beacon curBeacon;

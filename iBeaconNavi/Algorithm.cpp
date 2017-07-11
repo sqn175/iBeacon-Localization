@@ -1,4 +1,5 @@
 #include "Algorithm.h"
+#include <algorithm>
 
 BIP::Trilateration::Trilateration()
 	: dim_(2)
@@ -37,7 +38,7 @@ void BIP::Trilateration::setGroupInterval(const double gi)
 	groupInterval_ = gi;
 }
 
-void BIP::Trilateration::calPos(const std::vector<BeaconMeas> preparedBeaconMeas)
+void BIP::Trilateration::calTriPos(const std::vector<BeaconMeas> preparedBeaconMeas)
 {
 	int numVisibleBeacons = preparedBeaconMeas.size();
 	// create matrix for triangulation linear system, that we will solve
@@ -81,7 +82,7 @@ void BIP::Trilateration::calPos(const std::vector<BeaconMeas> preparedBeaconMeas
 	}else if (dim_ == 3)
 	{	// x,y,z coordinates to be calculated
 		// we calculate distance using calcDistFromRssi()
-		
+		// TODO: 3 dimension test
 	}
 
 	// TODO: three equation case
@@ -95,11 +96,15 @@ void BIP::Trilateration::calPos(const std::vector<BeaconMeas> preparedBeaconMeas
 
 void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 {
+	// TODO: filter out the unknown beacon
+
 	// we kick out the measurements which timestamp is outdated
-	// iterate the measGroups_
+
+	// iterate the measGroups_ first
 	for (auto it = measGroups_.begin(); it != measGroups_.end(); ++it)
 	{
-		// iterate the group, check every measurement
+		// iterate the group then, check every measurement
+		// measurements stored in list sorted by timestamp
 		for (auto itt = it->second.begin(); itt != it->second.end(); ++itt)
 		{
 			if (itt->getTimeStamp() < curBeaconMeas.getTimeStamp() - groupInterval_)
@@ -125,6 +130,33 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 		measGroups_.insert(std::pair<std::string, std::list<BeaconMeas>>(curBeaconMeas.getBeaconPtr()->getId(), newGroup));
 	}
 
+	// update curTimeStamp
+	curTimeStamp = curBeaconMeas.getTimeStamp();
+}
+
+std::vector<double> BIP::Trilateration::calPos()
+{
+	std::vector<double> pos(2, 0.0);
+	std::vector<BeaconMeas> smoothedBM = prepareBeaconMeas();
+	if (smoothedBM.size() == 0)
+		return;
+
+	if (smoothedBM.size() > 3)
+	{
+		std::vector<BeaconMeas> mostStrongMeas;
+		for (int i = smoothedBM.size() - 1; i >= 0; --i)
+		{
+			mostStrongMeas.push_back(smoothedBM.at(i));
+		}
+		calWeightPos(mostStrongMeas);
+	}
+	else
+	{
+		calWeightPos(smoothedBM);
+	}
+	pos.at(0) = posX_;
+	pos.at(1) = posY_;
+	return pos;
 }
 
 void BIP::Trilateration::calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas)
@@ -138,7 +170,7 @@ void BIP::Trilateration::calWeightPos(const std::vector<BeaconMeas> preparedBeac
 
 	for (unsigned int i = 0; i < preparedBeaconMeas.size(); i++)
 	{
-		if (preparedBeaconMeas[i].getBeaconPtr() == 0)
+		if (preparedBeaconMeas[i].getBeaconPtr() == nullptr)
 		{
 			// TODO: log
 		}
@@ -218,12 +250,38 @@ std::vector<double> BIP::Trilateration::solveLinearSystem(std::vector<double> ma
 
 std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas()
 {
-	// currently return the last element of every subgroup of measgroups
 	std::vector<BeaconMeas> preparedBeaconMeas;
+	if (measGroups_.size() == 0)
+		return;
+	// for every group measurements, we smooth them using a weighted window.
+	// smooth_m[n] = coef[0]rssi[n] + coef[1]rssi[n-1] + coef[2]rssi[n-2] + ...
+	// we have: 
+	//		coef[n] = normalizeCoef * 1/(curTimeStamp - timestamp[n] + 50(ms))
+	//		normalizeCoef = sum_n(1/(curTimeStamp - timestamp[n] + 50(ms)))
 	for (auto it = measGroups_.begin(); it != measGroups_.end(); ++it)
 	{
-		preparedBeaconMeas.push_back(it->second.back());
+		double normalizeCoef = 0.0;
+		std::list<BeaconMeas> group(it->second);
+
+		for (auto itg = group.begin(); itg != group.end(); ++itg)
+			normalizeCoef += 1.0 / (curTimeStamp - itg->getTimeStamp() + 50);
+
+		// smooth the rssi value
+		double curRssi = 0.0;
+		for (auto itg = group.begin(); itg != group.end(); ++itg)
+		{
+			double weight = 1.0 / ((curTimeStamp - itg->getTimeStamp() + 50) * normalizeCoef);
+			curRssi += weight * itg->getRssi();
+		}
+		 
+		// construct preparedBeaconMeas
+		BeaconMeas tmp(it->second.front().getBeaconPtr(), curRssi);
+		preparedBeaconMeas.push_back(tmp);
+
 	}
+
+	// sort preparedBeaconMeas into ascending order (e.g. from -100 to 0)
+	std::sort(preparedBeaconMeas.begin(), preparedBeaconMeas.end());
 	return preparedBeaconMeas;
 }
 
