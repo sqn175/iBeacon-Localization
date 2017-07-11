@@ -1,10 +1,13 @@
 #include "Algorithm.h"
 #include <algorithm>
+#include <iostream>
+#include <iomanip>
 
 BIP::Trilateration::Trilateration()
 	: dim_(2)
 	, posX_(0.0), posY_(0.0), posZ_(0.0)
 	, groupInterval_(2000)
+	, curTimeStamp(0)
 {
 }
 
@@ -97,26 +100,38 @@ void BIP::Trilateration::calTriPos(const std::vector<BeaconMeas> preparedBeaconM
 void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 {
 	// TODO: filter out the unknown beacon
+	// TODO: filter out wrong data e.g. -128dBm
 
 	// we kick out the measurements which timestamp is outdated
 
 	// iterate the measGroups_ first
-	for (auto it = measGroups_.begin(); it != measGroups_.end(); ++it)
+	for (auto it = measGroups_.begin(); it != measGroups_.end(); )
 	{
 		// iterate the group then, check every measurement
 		// measurements stored in list sorted by timestamp
-		for (auto itt = it->second.begin(); itt != it->second.end(); ++itt)
+		bool eraseGroup = false;
+		auto listBM = it->second;
+		auto itt = listBM.begin();
+		while ( itt->getTimeStamp() < curBeaconMeas.getTimeStamp() - groupInterval_ )
 		{
-			if (itt->getTimeStamp() < curBeaconMeas.getTimeStamp() - groupInterval_)
+			itt = listBM.erase(itt);
+			// all the measurement in this list is outdated
+			// clear the list 
+			if (itt == listBM.end())
 			{
-				it->second.pop_front();
-			}
-			else
-			{
+				eraseGroup = true;
 				break;
 			}
 		}
-
+		// update the map element
+		if (eraseGroup)
+		{
+			measGroups_.erase(it++);
+		}
+		else
+		{
+			++it;
+		}
 	}
 
 	auto it = measGroups_.find(curBeaconMeas.getBeaconPtr()->getId());
@@ -136,10 +151,10 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 
 std::vector<double> BIP::Trilateration::calPos()
 {
-	std::vector<double> pos(2, 0.0);
+
 	std::vector<BeaconMeas> smoothedBM = prepareBeaconMeas();
 	if (smoothedBM.size() == 0)
-		return;
+		return std::vector<double>(2, 0.0);
 
 	if (smoothedBM.size() > 3)
 	{
@@ -148,19 +163,19 @@ std::vector<double> BIP::Trilateration::calPos()
 		{
 			mostStrongMeas.push_back(smoothedBM.at(i));
 		}
-		calWeightPos(mostStrongMeas);
+		return calWeightPos(mostStrongMeas);
 	}
-	else
-	{
-		calWeightPos(smoothedBM);
-	}
-	pos.at(0) = posX_;
-	pos.at(1) = posY_;
-	return pos;
+
+	// log
+	for (auto item : smoothedBM)
+		std::cout << item.getBeaconPtr()->getId() << ": " << std::fixed <<std::setprecision(0)<<item.getTimeStamp() << "  " << item.getRssi() << "\n";
+
+	return calWeightPos(smoothedBM);
 }
 
-void BIP::Trilateration::calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas)
+std::vector<double> BIP::Trilateration::calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas)
 {
+	std::vector<double> posXY(2, 0.0);
 	double normalizeCoefficient = 0.0;
 	//take revert values, because lower distance then bigger weight
 	for (unsigned int i = 0; i < preparedBeaconMeas.size(); i++)
@@ -178,14 +193,16 @@ void BIP::Trilateration::calWeightPos(const std::vector<BeaconMeas> preparedBeac
 		weight[i] += 1.0 / (fabs(preparedBeaconMeas[i].calcDistFromRssi() *
 			normalizeCoefficient));
 
-		double beaconX = 0, beaconY = 0.;
-		beaconX = preparedBeaconMeas[i].getBeaconPtr()->getX();
-		beaconY = preparedBeaconMeas[i].getBeaconPtr()->getY();
+		double beaconX = preparedBeaconMeas[i].getBeaconPtr()->getX();
+		double beaconY = preparedBeaconMeas[i].getBeaconPtr()->getY();
 
 		//find final coordinates according to probability
-		posX_ += weight[i] * beaconX;
-		posY_ += weight[i] * beaconY;
+		posXY.at(0) += weight[i] * beaconX;
+		posXY.at(1) += weight[i] * beaconY;
 	}
+	posX_ = posXY.at(0);
+	posY_ = posXY.at(1);
+	return posXY;
 }
 
 std::vector<double> BIP::Trilateration::solveLinearSystem(std::vector<double> matrixA, std::vector<double> b)
@@ -251,8 +268,8 @@ std::vector<double> BIP::Trilateration::solveLinearSystem(std::vector<double> ma
 std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas()
 {
 	std::vector<BeaconMeas> preparedBeaconMeas;
-	if (measGroups_.size() == 0)
-		return;
+	// TODO: size = 0
+
 	// for every group measurements, we smooth them using a weighted window.
 	// smooth_m[n] = coef[0]rssi[n] + coef[1]rssi[n-1] + coef[2]rssi[n-2] + ...
 	// we have: 
@@ -275,7 +292,7 @@ std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas()
 		}
 		 
 		// construct preparedBeaconMeas
-		BeaconMeas tmp(it->second.front().getBeaconPtr(), curRssi);
+		BeaconMeas tmp(it->second.front().getBeaconPtr(), curRssi, it->second.back().getTimeStamp());
 		preparedBeaconMeas.push_back(tmp);
 
 	}

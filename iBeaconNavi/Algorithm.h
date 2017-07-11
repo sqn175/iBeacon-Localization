@@ -62,7 +62,7 @@ private:
 	std::vector<BeaconMeas> prepareBeaconMeas();
 
 	// calculate coordiante, lower distance then bigger weight, closer to that beacon
-	void calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas);
+	std::vector<double> calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas);
 
 	// calculate coordinates using three prepared Beacon measurements, method: trilateration 
 	void calTriPos(const std::vector<BeaconMeas> preparedBeaconMeas);

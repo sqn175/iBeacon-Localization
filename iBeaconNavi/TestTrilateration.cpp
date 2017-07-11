@@ -4,12 +4,13 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <iomanip>
 
 int main()
 {
 	int measCnt = 0;  // iBeacon measurement count
 
-	std::string fileName = "scan_bluetooth3.txt";
+	std::string fileName = "F:\\iBeacon\\20170712\\scan_bluetoothstatic.txt";
 	std::vector<BIP::IBeacon> ibeaconsMap;
 	// Initialize beacon map
 	// test scenario. Set 3 beacons on the map
@@ -38,26 +39,15 @@ int main()
 	std::vector<BIP::BeaconMeas> preparedBM;
 	BIP::BeaconMeas bm;
 
-	bm.setBeaconPtr(&ibeaconsMap[0]);
-	bm.setRssi(-59);
-	preparedBM.push_back(bm);
-
-	/*bm.setBeaconPtr(&ibeaconsMap[1]);
-	bm.setRssi(-76);
-	preparedBM.push_back(bm);*/
-
-	bm.setBeaconPtr(&ibeaconsMap[2]);
-	bm.setRssi(-57); 
-	preparedBM.push_back(bm); 
-
-//	tri.calWeightPos(preparedBM);
-
 	// read beacon measurements from file
 	std::ifstream bleScanFile( fileName );
 
 	// write beacon1 rssi value to file, check the rssi value distribution
 	std::ofstream staticRssiFile("rssi.txt");
-	
+
+	// Result file
+	std::ofstream posFile("position.csv");
+
 	if ( !bleScanFile.is_open() )
 	{
 		std::cerr << "File: " << fileName << " does NOT exist\n";
@@ -70,22 +60,31 @@ int main()
 	{
 		// A new measurement arrrives
 		std::string header = line.substr(0, 1);
-		if ( strcmp( header.c_str(), "-") == 0 )
+		if ( strcmp( header.c_str(), "1") == 0 )
 		{
 			measCnt++;
+			std::cout << "------New Measurement:" << measCnt << "------\n";
 			BIP::BeaconMeas curBeaconMeas;
+			curBeaconMeas.setTimeStamp(stod(line));
 			getline(bleScanFile, line);
 			getline(bleScanFile, line);
 			// read mac address of the iBeacon emitting this measurement
 			std::string macAddress = line.substr(8, 17);
 			// console the beacon map to determine the iBeacon location
-			for (auto it = ibeaconsMap.begin(); it < ibeaconsMap.end(); ++it )
+			auto it = ibeaconsMap.begin();
+			for (; it < ibeaconsMap.end(); ++it )
 			{
 				if ( std::strcmp(macAddress.c_str(), (*it).getId()) == 0)
 				{
 					curBeaconMeas.setBeaconPtr( &(*it) );
+					break;
 				}
 			}
+
+			// filter out the beacon not in the beacon map
+			if (it == ibeaconsMap.end())
+				continue;
+
 			getline(bleScanFile, line);
 			getline(bleScanFile, line);
 			getline(bleScanFile, line);
@@ -97,12 +96,22 @@ int main()
 				staticRssiFile << line.substr(17, 3) << "\n";
 			}
 			// Now, we get the new beaconMeas, process it
-			
-
+			tri.addMeas(curBeaconMeas);
+	/*		std::cout << "- time:" << curBeaconMeas.getTimeStamp() << "-\n";
+			std::cout << "- Mac address:" <<curBeaconMeas.getBeaconPtr()->getId() << "-\n";
+			std::cout << "- rssi:" << curBeaconMeas.getRssi() << "-\n";*/
+			// calculate position
+			std::vector<double> curPos = tri.calPos();
+			std::cout << "Result: x=" <<std::fixed << std::setprecision(5)<< curPos.at(0) << "  y=" << curPos.at(1)<<"\n\n";
+			posFile << curBeaconMeas.getTimeStamp() << "," << curPos.at(0) << "," << curPos.at(1) << "\n";
 		}
 		BIP::Beacon curBeacon;
 	}
 	bleScanFile.close();
 		
 	staticRssiFile.close();
+
+	posFile.close();
+
+	return 0;
 }

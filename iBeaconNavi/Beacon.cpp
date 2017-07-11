@@ -122,15 +122,17 @@ BIP::BeaconMeas::BeaconMeas()
 {
 }
 
-BIP::BeaconMeas::BeaconMeas(Beacon* beacon, double rssi)
+BIP::BeaconMeas::BeaconMeas(Beacon* beacon, double rssi, double timeStamp)
 {
 	beaconPtr_ = beacon;
 	rssi_ = rssi;
+	timeStamp_ = timeStamp;
 }
 
 BIP::BeaconMeas::BeaconMeas(const BeaconMeas& beaconMeas)
 	: beaconPtr_(beaconMeas.beaconPtr_)
 	, rssi_(beaconMeas.rssi_)
+	, timeStamp_(beaconMeas.timeStamp_)
 {
 }
 

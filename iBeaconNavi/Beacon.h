@@ -82,7 +82,7 @@ class BeaconMeas
 {
 public:
 	BeaconMeas();
-	BeaconMeas(Beacon* beacon, double rssi);
+	BeaconMeas(Beacon* beacon, double rssi, double timeStamp);
 	BeaconMeas(const BeaconMeas&);
 	~BeaconMeas();
 
