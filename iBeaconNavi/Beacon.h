@@ -89,10 +89,13 @@ public:
 	void setBeaconPtr(const Beacon* beaconPtr);
 	void setRssi(const double rssi);
 	void setTimeStamp(const double timeStamp);
+	void setStatus(const int stat);
 
 	Beacon* getBeaconPtr() const;
 	double getRssi() const;
+	double getDist() const;
 	const double getTimeStamp() const;
+	int getStatus() const;
 
 	bool operator<(const BeaconMeas& entry)const;
 	bool operator>(const BeaconMeas& entry)const;
@@ -104,7 +107,12 @@ public:
 private:
 	Beacon* beaconPtr_;			// pointer to beacon from which we got measurement
 	double rssi_;				// RSSI of the measurement
+	double dist_;				// the corresponding distance of rssi
 	double timeStamp_;			// timestamp of current measurement, epoch time in milliseconds, e.g.1499218065493
+	int status_;				// assign an int status to every BeaconMeasurements.
+								// 1, is valid
+								// -1, is a outlier
+								// 0, status unknown
 };
 
 } // namespace BIP

@@ -118,7 +118,11 @@ int BIP::IBeacon::getMinor() const
 }
 
 BIP::BeaconMeas::BeaconMeas()
-	:beaconPtr_(nullptr)
+	: beaconPtr_(nullptr)
+	, rssi_(0.0)
+	, dist_(0.0)
+	, timeStamp_(0.0)
+	, status_(0)
 {
 }
 
@@ -127,12 +131,16 @@ BIP::BeaconMeas::BeaconMeas(Beacon* beacon, double rssi, double timeStamp)
 	beaconPtr_ = beacon;
 	rssi_ = rssi;
 	timeStamp_ = timeStamp;
+	dist_ = this->calcDistFromRssi();
+	status_ = 0;
 }
 
 BIP::BeaconMeas::BeaconMeas(const BeaconMeas& beaconMeas)
 	: beaconPtr_(beaconMeas.beaconPtr_)
 	, rssi_(beaconMeas.rssi_)
+	, dist_(beaconMeas.dist_)
 	, timeStamp_(beaconMeas.timeStamp_)
+	, status_(beaconMeas.status_)
 {
 }
 
@@ -149,11 +157,17 @@ void BIP::BeaconMeas::setBeaconPtr(const Beacon* beaconPtr)
 void BIP::BeaconMeas::setRssi(const double rssi)
 {
 	rssi_ = rssi;
+	dist_ = calcDistFromRssi();
 }
 
 void BIP::BeaconMeas::setTimeStamp(const double timeStamp)
 {
 	timeStamp_ = timeStamp;
+}
+
+void BIP::BeaconMeas::setStatus(const int stat)
+{
+	status_ = stat;
 }
 
 BIP::Beacon* BIP::BeaconMeas::getBeaconPtr() const
@@ -166,9 +180,19 @@ double BIP::BeaconMeas::getRssi() const
 	return rssi_;
 }
 
+double BIP::BeaconMeas::getDist() const
+{
+	return dist_;
+}
+
 const double BIP::BeaconMeas::getTimeStamp() const
 {
 	return timeStamp_;
+}
+
+int BIP::BeaconMeas::getStatus() const
+{
+	return status_;
 }
 
 bool BIP::BeaconMeas::operator<(const BeaconMeas& entry) const

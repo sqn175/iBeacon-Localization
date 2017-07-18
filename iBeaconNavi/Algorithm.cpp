@@ -8,6 +8,7 @@ BIP::Trilateration::Trilateration()
 	, posX_(0.0), posY_(0.0), posZ_(0.0)
 	, groupInterval_(2000)
 	, curTimeStamp(0)
+	, measDiffThreshold_(10.0)
 {
 }
 
@@ -31,9 +32,19 @@ int BIP::Trilateration::getDim() const
 	return dim_;
 }
 
+double BIP::Trilateration::getMeasDiffThred() const
+{
+	return measDiffThreshold_;
+}
+
 void BIP::Trilateration::setDim(const int dim)
 {
 	dim_ = dim;
+}
+
+void BIP::Trilateration::setMeasDiffThred(double th)
+{
+	measDiffThreshold_ = th;
 }
 
 void BIP::Trilateration::setGroupInterval(const double gi)
@@ -103,6 +114,7 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 	// TODO: filter out wrong data e.g. -128dBm
 
 	// we kick out the measurements which timestamp is outdated
+	// the corresponding status is also updated 
 
 	// iterate the measGroups_ first
 	for (auto it = measGroups_.begin(); it != measGroups_.end(); )
@@ -110,14 +122,25 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 		// iterate the group then, check every measurement
 		// measurements stored in list sorted by timestamp
 		bool eraseGroup = false;
-		auto listBM = it->second;
-		auto itt = listBM.begin();
+		auto listBM = &it->second;
+		//for (auto itt = listBM.begin(); itt != listBM.end(); )
+		//{
+		//	if (itt->getTimeStamp() < curBeaconMeas.getTimeStamp() - groupInterval_)
+		//	{
+		//		itt = listBM.erase(itt);
+		//	}
+		//	else
+		//	{
+		//		++itt;
+		//	}
+		//}
+		auto itt = listBM->begin();
 		while ( itt->getTimeStamp() < curBeaconMeas.getTimeStamp() - groupInterval_ )
 		{
-			itt = listBM.erase(itt);
+			itt = listBM->erase(itt);
 			// all the measurement in this list is outdated
 			// clear the list 
-			if (itt == listBM.end())
+			if (itt == listBM->end())
 			{
 				eraseGroup = true;
 				break;
@@ -137,10 +160,28 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 	auto it = measGroups_.find(curBeaconMeas.getBeaconPtr()->getId());
 	if ( it != measGroups_.end() )
 	{// if measGroups_ contains the Beacon group which emitted this curBeaconMeas, we add the meas to the group
-		it->second.push_back(curBeaconMeas);
+		auto measList = &it->second;
+		measList->push_back(curBeaconMeas);
+		// the new curBeaconMeas's status is unknown
+		auto listIt = --measList->end();
+		listIt->setStatus(0);
+		// we define the status of the last measurement but one by measDiffThreshold_
+		if (measList->size() >= 3)
+		{
+			bool flag1 = abs((*listIt).getDist() - (*--listIt).getDist()) >= measDiffThreshold_;
+			bool flag2 = abs((*listIt).getDist() - (*--listIt).getDist()) >= measDiffThreshold_;
+			if (flag1 && flag2)
+			{
+				(*++listIt).setStatus(-1);
+			}
+			else
+				(*++listIt).setStatus(1);
+		}
 	}
 	else
 	{// we insert a new group to measGroup_
+		// the first measurement, we set it as valid
+		curBeaconMeas.setStatus(0);
 		std::list<BeaconMeas> newGroup({curBeaconMeas });
 		measGroups_.insert(std::pair<std::string, std::list<BeaconMeas>>(curBeaconMeas.getBeaconPtr()->getId(), newGroup));
 	}
@@ -152,7 +193,7 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 std::vector<double> BIP::Trilateration::calPos()
 {
 
-	std::vector<BeaconMeas> smoothedBM = prepareBeaconMeas();
+	std::vector<BeaconMeas> smoothedBM = prepareBeaconMeas1();
 	if (smoothedBM.size() == 0)
 		return std::vector<double>(2, 0.0);
 
@@ -179,7 +220,7 @@ std::vector<double> BIP::Trilateration::calWeightPos(const std::vector<BeaconMea
 	double normalizeCoefficient = 0.0;
 	//take revert values, because lower distance then bigger weight
 	for (unsigned int i = 0; i < preparedBeaconMeas.size(); i++)
-		normalizeCoefficient += 1.0 / fabs(preparedBeaconMeas[i].calcDistFromRssi() );
+		normalizeCoefficient += 1.0 / fabs(preparedBeaconMeas[i].getDist() );
 
 	std::vector <double> weight(preparedBeaconMeas.size(), 0.0);
 
@@ -190,7 +231,7 @@ std::vector<double> BIP::Trilateration::calWeightPos(const std::vector<BeaconMea
 			// TODO: log
 		}
 		// calculate probability of being at beacons x,y coordinates
-		weight[i] += 1.0 / (fabs(preparedBeaconMeas[i].calcDistFromRssi() *
+		weight[i] += 1.0 / (fabs(preparedBeaconMeas[i].getDist() *
 			normalizeCoefficient));
 
 		double beaconX = preparedBeaconMeas[i].getBeaconPtr()->getX();
@@ -268,7 +309,7 @@ std::vector<double> BIP::Trilateration::solveLinearSystem(std::vector<double> ma
 std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas()
 {
 	std::vector<BeaconMeas> preparedBeaconMeas;
-	// TODO: size = 0
+	// TODO: size = 0 case
 
 	// for every group measurements, we smooth them using a weighted window.
 	// smooth_m[n] = coef[0]rssi[n] + coef[1]rssi[n-1] + coef[2]rssi[n-2] + ...
@@ -281,22 +322,88 @@ std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas()
 		std::list<BeaconMeas> group(it->second);
 
 		for (auto itg = group.begin(); itg != group.end(); ++itg)
-			normalizeCoef += 1.0 / (curTimeStamp - itg->getTimeStamp() + 50);
+			normalizeCoef += 1.0 / (curTimeStamp - itg->getTimeStamp() + 600);
 
 		// smooth the rssi value
 		double curRssi = 0.0;
 		for (auto itg = group.begin(); itg != group.end(); ++itg)
 		{
-			double weight = 1.0 / ((curTimeStamp - itg->getTimeStamp() + 50) * normalizeCoef);
+			double weight = 1.0 / ((curTimeStamp - itg->getTimeStamp() + 600) * normalizeCoef);
 			curRssi += weight * itg->getRssi();
 		}
-		 
+		
+		// TODO: remove this log file
+		if (strcmp(it->second.front().getBeaconPtr()->getId(), "19:18:FC:00:E6:67") == 0)
+		{
+			std::ofstream curRssiFile("curRssi.txt", std::ofstream::app);
+			curRssiFile << curRssi << "\n";
+			curRssiFile.close();
+		}
+
 		// construct preparedBeaconMeas
 		BeaconMeas tmp(it->second.front().getBeaconPtr(), curRssi, it->second.back().getTimeStamp());
 		preparedBeaconMeas.push_back(tmp);
 
 	}
 
+	// sort preparedBeaconMeas into ascending order (e.g. from -100 to 0)
+	std::sort(preparedBeaconMeas.begin(), preparedBeaconMeas.end());
+	return preparedBeaconMeas;
+}
+
+// WMA_m = (n*p_m + (n-1)*p_{m-1} + ... + p_{m-n+1})/(n + (n-1) + ... + 1)
+std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas1()
+{
+	std::vector<BeaconMeas> preparedBeaconMeas;
+
+	// TODO: size = 0 case
+	if (measGroups_.size() == 0)
+		std::cout << "measgroup contain no data.\n";
+
+	for (auto it = measGroups_.begin(); it != measGroups_.end(); ++it)
+	{
+		auto measList = it->second;
+		int n = measList.size();
+		if (n == 0)
+			std::cout << "list contain no data.\n";
+		auto listIt = measList.begin();
+		for (; listIt != measList.end(); ++listIt)
+		{
+			if (listIt->getStatus() != 1)
+				--n;
+		}
+		double sum = 0;
+		--listIt;
+
+		for (int i = n; ; --listIt)
+		{
+			if (listIt->getStatus() == 1)
+			{
+				sum += i * listIt->getRssi();
+				--i;
+			}
+			if (listIt == measList.begin())
+				break;
+		}
+
+		if (n == 0)
+			continue;
+
+		double wma = sum / (n * (n + 1) / 2);
+
+		// TODO: remove this log file
+		if (strcmp(it->second.front().getBeaconPtr()->getId(), "19:18:FC:00:E6:58") == 0)
+		{
+			std::ofstream curRssiFile("curRssi.txt", std::ofstream::app);
+			curRssiFile << wma << "\n";
+			curRssiFile.close();
+		}
+
+
+		// we have a delay of one measurement
+		BeaconMeas tmp(measList.back().getBeaconPtr(), wma, measList.back().getTimeStamp());
+		preparedBeaconMeas.push_back(tmp);
+	}
 	// sort preparedBeaconMeas into ascending order (e.g. from -100 to 0)
 	std::sort(preparedBeaconMeas.begin(), preparedBeaconMeas.end());
 	return preparedBeaconMeas;

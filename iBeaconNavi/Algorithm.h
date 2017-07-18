@@ -11,6 +11,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <fstream>
 
 #include "Beacon.h"
 
@@ -29,10 +30,12 @@ public:
 	double getPosZ() const;
 
 	int getDim() const;
+	double getMeasDiffThred() const;
 	double getGroupInterval() const;
 
 	// set coordinate dimension, 2 for planar case, 1 for line case
 	void setDim(const int);
+	void setMeasDiffThred(double th);
 
 	// we maintain the measurements in a window, which length is groupInterval_ in milliseconds
 	void setGroupInterval(const double);
@@ -48,8 +51,13 @@ private:
 	// the coordinates of device derived from iBeacon measurements (meter)
 	double posX_, posY_, posZ_;
 
+	// we filter out the measurements, 
+	// which distance is  measDiffThreshold_ higher or lower than 
+	// the previous one and the latter one
+	double measDiffThreshold_;
+
 	// measGroups_ contains subgroups grouped by beacon id
-	std::map<std::string, std::list<BeaconMeas>> measGroups_; 
+	std::map<std::string, std::list<BeaconMeas>> measGroups_;
 
 	// the lasting interval of a subgroup measurements should not exceed groupInterval
 	// we specify the size as time interval in milliseconds
@@ -60,7 +68,8 @@ private:
 
 	// prepare measurements feed to func calTriPos()
 	std::vector<BeaconMeas> prepareBeaconMeas();
-
+	// kick out measurement with status of -1 and using weighted moving average
+	std::vector<BeaconMeas>	prepareBeaconMeas1();
 	// calculate coordiante, lower distance then bigger weight, closer to that beacon
 	std::vector<double> calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas);
 
