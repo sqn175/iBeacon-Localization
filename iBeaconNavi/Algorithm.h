@@ -48,7 +48,7 @@ private:
 	// coordinate dimension, e.g 2 for planar coordinates x-y
 	int dim_;
 
-	// the coordinates of device derived from iBeacon measurements (meter)
+	// the coordinates of device derived from Trilateration measurements (meter)
 	double posX_, posY_, posZ_;
 
 	// we filter out the measurements, 

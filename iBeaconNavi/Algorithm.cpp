@@ -1,7 +1,10 @@
 #include "Algorithm.h"
+
 #include <algorithm>
+#include <math.h>       /* fabs */
 #include <iostream>
 #include <iomanip>
+#include <string.h>
 
 BIP::Trilateration::Trilateration()
 	: dim_(2)
@@ -220,7 +223,7 @@ std::vector<double> BIP::Trilateration::calWeightPos(const std::vector<BeaconMea
 	double normalizeCoefficient = 0.0;
 	//take revert values, because lower distance then bigger weight
 	for (unsigned int i = 0; i < preparedBeaconMeas.size(); i++)
-		normalizeCoefficient += 1.0 / fabs(preparedBeaconMeas[i].getDist() );
+                normalizeCoefficient += 1.0 / fabs(preparedBeaconMeas[i].getDist() );
 
 	std::vector <double> weight(preparedBeaconMeas.size(), 0.0);
 

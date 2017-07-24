@@ -1,5 +1,7 @@
 #include "Beacon.h"
 
+#include <math.h>
+
 BIP::Beacon::Beacon()
 	: id_("0"), x_(0.), y_(0.), height_(0.0), rssiRef_(-59), pathLoss_(2.0)
 {
