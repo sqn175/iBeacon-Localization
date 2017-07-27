@@ -7,43 +7,31 @@
 #include <string.h>
 
 BIP::Trilateration::Trilateration()
-	: dim_(2)
-	, posX_(0.0), posY_(0.0), posZ_(0.0)
+	: posX_(0.0), posY_(0.0), posZ_(0.0)
 	, groupInterval_(2000)
 	, curTimeStamp(0)
 	, measDiffThreshold_(10.0)
+	, nUsedBeacon_(-1)
+	, rssiThred_(-90)
 {
 }
 
-double BIP::Trilateration::getPosX() const
+BIP::Trilateration::Trilateration(const Trilateration& tri)
+	: posX_(tri.posX_), posY_(tri.posY_), posZ_(tri.posZ_)
+	, groupInterval_(tri.groupInterval_)
+	, curTimeStamp(tri.curTimeStamp)
+	, measDiffThreshold_(tri.measDiffThreshold_)
+	, nUsedBeacon_(tri.nUsedBeacon_)
+	, rssiThred_(tri.rssiThred_)
 {
-	return posX_;
 }
 
-double BIP::Trilateration::getPosY() const
-{
-	return posY_;
-}
-
-double BIP::Trilateration::getPosZ() const
-{
-	return posZ_;
-}
-
-int BIP::Trilateration::getDim() const
-{
-	return dim_;
-}
 
 double BIP::Trilateration::getMeasDiffThred() const
 {
 	return measDiffThreshold_;
 }
 
-void BIP::Trilateration::setDim(const int dim)
-{
-	dim_ = dim;
-}
 
 void BIP::Trilateration::setMeasDiffThred(double th)
 {
@@ -55,60 +43,14 @@ void BIP::Trilateration::setGroupInterval(const double gi)
 	groupInterval_ = gi;
 }
 
-void BIP::Trilateration::calTriPos(const std::vector<BeaconMeas> preparedBeaconMeas)
+void BIP::Trilateration::setNUsedBeacon(const int n)
 {
-	int numVisibleBeacons = preparedBeaconMeas.size();
-	// create matrix for triangulation linear system, that we will solve
-	// for obtaining the coordinates we need at least dim + 1 beacons
-	// index [i][j] = i * dim + j
+	nUsedBeacon_ = n;
+}
 
-	std::vector <double> matrixA((numVisibleBeacons - 1) * dim_, 0.0);
-	std::vector <double> b(numVisibleBeacons - 1, 0.0);
-
-	// By subtracting the last equation from each other we bring our 
-	// nonlinear system to linear matrixA
-	BeaconMeas firstBeacon = preparedBeaconMeas.front();
-
-	if ( dim_ == 2)
-	{	// we do not consider the height of device, x,y coordinate to be calculated
-		// we calculate distance using calcPlanarDistFromRssi()
-		double xFirstBeacon = 0, yFirstBeacon = 0;
-		xFirstBeacon = preparedBeaconMeas[0].getBeaconPtr()->getX();
-		yFirstBeacon = preparedBeaconMeas[0].getBeaconPtr()->getY();
-
-		double firstBeaconDistance = preparedBeaconMeas.front().calcPlanarDistFromRssi();
-		double normaFirstBeacon = xFirstBeacon * xFirstBeacon +
-			yFirstBeacon * yFirstBeacon;
-
-		for (int i = 0; i < numVisibleBeacons - 1; i++)
-		{
-			// fill the matrix A and right part of linear system b
-			double x = 0.0, y = 0.0;
-			x = preparedBeaconMeas[i + 1].getBeaconPtr()->getX();
-			y = preparedBeaconMeas[i + 1].getBeaconPtr()->getY();
-
-			double distance = preparedBeaconMeas[i + 1].calcPlanarDistFromRssi();
-
-			matrixA[i * dim_] = 2 * (x - xFirstBeacon);
-			matrixA[i * dim_ + 1] = 2 * (y - yFirstBeacon);
-
-			double norma = x * x + y * y;
-			b[i] = firstBeaconDistance * firstBeaconDistance - distance * distance -
-				normaFirstBeacon + norma;
-		}
-	}else if (dim_ == 3)
-	{	// x,y,z coordinates to be calculated
-		// we calculate distance using calcDistFromRssi()
-		// TODO: 3 dimension test
-	}
-
-	// TODO: three equation case
-	// calculate coordinates using OLS method
-	std::vector<double> vectorXY = solveLinearSystem(matrixA, b);
-
-	// update device coordinates
-	posX_ = vectorXY[0];
-	posY_ = vectorXY[1];
+void BIP::Trilateration::setRssiThred(const double rssiThred)
+{
+	rssiThred_ = rssiThred;
 }
 
 void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
@@ -126,17 +68,7 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 		// measurements stored in list sorted by timestamp
 		bool eraseGroup = false;
 		auto listBM = &it->second;
-		//for (auto itt = listBM.begin(); itt != listBM.end(); )
-		//{
-		//	if (itt->getTimeStamp() < curBeaconMeas.getTimeStamp() - groupInterval_)
-		//	{
-		//		itt = listBM.erase(itt);
-		//	}
-		//	else
-		//	{
-		//		++itt;
-		//	}
-		//}
+
 		auto itt = listBM->begin();
 		while ( itt->getTimeStamp() < curBeaconMeas.getTimeStamp() - groupInterval_ )
 		{
@@ -196,7 +128,7 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 std::vector<double> BIP::Trilateration::calPos()
 {
 
-	std::vector<BeaconMeas> smoothedBM = prepareBeaconMeas1();
+	std::vector<BeaconMeas> smoothedBM = prepareBeaconMeas();
 	if (smoothedBM.size() == 0)
 		return std::vector<double>(2, 0.0);
 
@@ -211,9 +143,9 @@ std::vector<double> BIP::Trilateration::calPos()
 	}
 
 	// log
-	for (auto item : smoothedBM)
+	/*for (auto item : smoothedBM)
 		std::cout << item.getBeaconPtr()->getId() << ": " << std::fixed <<std::setprecision(0)<<item.getTimeStamp() << "  " << item.getRssi() << "\n";
-
+*/
 	return calWeightPos(smoothedBM);
 }
 
@@ -249,113 +181,8 @@ std::vector<double> BIP::Trilateration::calWeightPos(const std::vector<BeaconMea
 	return posXY;
 }
 
-std::vector<double> BIP::Trilateration::solveLinearSystem(std::vector<double> matrixA, std::vector<double> b)
-{
-	int nOfEquations = b.size();
-	int dim = matrixA.size() / nOfEquations;
-
-	std::vector <double> xy(dim, 0.);
-	std::vector <double> aTransposeA(dim * dim, 0.);
-
-	// find pseudoInverseMatrix
-	for (int row = 0; row < dim; row++)
-	{
-		for (int col = 0; col < dim; col++)
-		{
-			for (int inner = 0; inner < nOfEquations; inner++)
-			{
-				// Multiply the row of A_transpose by the column of A 
-				// to get the row, column of multiplyAATranspose.
-				aTransposeA[row * dim + col] +=
-					matrixA[inner * dim + row] * matrixA[inner * dim + col];
-			}
-		}
-	}
-
-	std::vector <double> revertMatrix(dim * dim, 0.);
-	double det = aTransposeA[0] * aTransposeA[3] -
-		aTransposeA[2] * aTransposeA[1];
-
-	//simple formula for invert matrix 2x2
-	revertMatrix[0] = aTransposeA[3] / det;
-	revertMatrix[1] = -aTransposeA[1] / det;
-	revertMatrix[2] = -aTransposeA[2] / det;
-	revertMatrix[3] = aTransposeA[0] / det;
-
-	//Multiply revertMatrix on A transpose
-	std::vector <double> matrix2xN(dim * nOfEquations, 0.0);
-	for (int row = 0; row < dim; row++)
-	{
-		for (int col = 0; col < nOfEquations; col++)
-		{
-			for (int inner = 0; inner < dim; inner++)
-			{
-				// Multiply the row of A_transpose by the column of A 
-				// to get the row, column of multiplyAATranspose.
-				matrix2xN[row * nOfEquations + col] +=
-					revertMatrix[row * dim + inner] * matrixA[col * dim + inner];
-			}
-		}
-	}
-
-	//Multiply matrix2xN on B vector 
-	for (int col = 0; col < dim; col++)
-	{
-		for (int inner = 0; inner < nOfEquations; inner++)
-		{
-			xy[col] += matrix2xN[col * nOfEquations + inner] * b[inner];
-		}
-	}
-	return xy;
-}
-
-std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas()
-{
-	std::vector<BeaconMeas> preparedBeaconMeas;
-	// TODO: size = 0 case
-
-	// for every group measurements, we smooth them using a weighted window.
-	// smooth_m[n] = coef[0]rssi[n] + coef[1]rssi[n-1] + coef[2]rssi[n-2] + ...
-	// we have: 
-	//		coef[n] = normalizeCoef * 1/(curTimeStamp - timestamp[n] + 50(ms))
-	//		normalizeCoef = sum_n(1/(curTimeStamp - timestamp[n] + 50(ms)))
-	for (auto it = measGroups_.begin(); it != measGroups_.end(); ++it)
-	{
-		double normalizeCoef = 0.0;
-		std::list<BeaconMeas> group(it->second);
-
-		for (auto itg = group.begin(); itg != group.end(); ++itg)
-			normalizeCoef += 1.0 / (curTimeStamp - itg->getTimeStamp() + 600);
-
-		// smooth the rssi value
-		double curRssi = 0.0;
-		for (auto itg = group.begin(); itg != group.end(); ++itg)
-		{
-			double weight = 1.0 / ((curTimeStamp - itg->getTimeStamp() + 600) * normalizeCoef);
-			curRssi += weight * itg->getRssi();
-		}
-		
-		// TODO: remove this log file
-		if (strcmp(it->second.front().getBeaconPtr()->getId(), "19:18:FC:00:E6:67") == 0)
-		{
-			std::ofstream curRssiFile("curRssi.txt", std::ofstream::app);
-			curRssiFile << curRssi << "\n";
-			curRssiFile.close();
-		}
-
-		// construct preparedBeaconMeas
-		BeaconMeas tmp(it->second.front().getBeaconPtr(), curRssi, it->second.back().getTimeStamp());
-		preparedBeaconMeas.push_back(tmp);
-
-	}
-
-	// sort preparedBeaconMeas into ascending order (e.g. from -100 to 0)
-	std::sort(preparedBeaconMeas.begin(), preparedBeaconMeas.end());
-	return preparedBeaconMeas;
-}
-
 // WMA_m = (n*p_m + (n-1)*p_{m-1} + ... + p_{m-n+1})/(n + (n-1) + ... + 1)
-std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas1()
+std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas()
 {
 	std::vector<BeaconMeas> preparedBeaconMeas;
 
@@ -363,8 +190,12 @@ std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas1()
 	if (measGroups_.size() == 0)
 		std::cout << "measgroup contain no data.\n";
 
+	int index = 0;
 	for (auto it = measGroups_.begin(); it != measGroups_.end(); ++it)
 	{
+		if (nUsedBeacon_ != -1 && index >= nUsedBeacon_)
+			break;
+		++index;
 		auto measList = it->second;
 		int n = measList.size();
 		if (n == 0)
@@ -395,12 +226,12 @@ std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas1()
 		double wma = sum / (n * (n + 1) / 2);
 
 		// TODO: remove this log file
-		if (strcmp(it->second.front().getBeaconPtr()->getId(), "19:18:FC:00:E6:58") == 0)
+		/*if (strcmp(it->second.front().getBeaconPtr()->getId(), "19:18:FC:00:E6:58") == 0)
 		{
 			std::ofstream curRssiFile("curRssi.txt", std::ofstream::app);
 			curRssiFile << wma << "\n";
 			curRssiFile.close();
-		}
+		}*/
 
 
 		// we have a delay of one measurement
@@ -416,4 +247,14 @@ std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas1()
 double BIP::Trilateration::getGroupInterval() const
 {
 	return groupInterval_;
+}
+
+int BIP::Trilateration::getNUsedbeacon() const
+{
+	return nUsedBeacon_;
+}
+
+double BIP::Trilateration::getRssiThred() const
+{
+	return rssiThred_;
 }

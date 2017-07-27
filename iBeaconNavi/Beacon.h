@@ -21,11 +21,8 @@ public:
 	Beacon(const Beacon&);    // copy constructor
 	virtual ~Beacon() {};
 
-	//const Beacon &operator=(const Beacon &beacon);
-
-	//specify unique beacon identifier that allows us to distinguish beacon 
-	// and its measurements
-	void setBeaconId(const std::string& beaconId);
+	// Bind mac addres as an unique id of this beacon
+	virtual void bindId();
 
 	// specify x,y, beacon planar coordinates
 	void setX(const double x);
@@ -38,20 +35,27 @@ public:
 	void setRssiPref(const double);
 	void setPathLoss(const double);
 
+	// sepcify mac address
+	void setMacAddr(const std::string& mac);
+
 	// get things
-	const char* getId() const;
+	// unique beacon identifier that allows us to distinguish beacon 
+	// and its measurements
+	virtual const char* getId() const;
+
 	double getX() const;
 	double getY() const;
 	double getHeight() const;
 	double getRssiRef() const;
 	double getPathLoss() const;
 
-private:
+protected:
 	std::string id_;       // id of the beacon (e.g. major+minor+uuid or mac address)
 	double x_, y_;         // beacon planar coodinates
 	double height_;        // vertical height of the beacon from the device(e.g. from mobile phone)
 	double rssiRef_;       // reference rssi value at 1 meter distance
 	double pathLoss_;      // pathloss exponents of the Bluetooth signal propagation model
+	std::string mac_;	   // mac address of this Beacon
 };
 
 // IBeacon is a beacon, invented by apple, that has additional fields:
@@ -63,9 +67,15 @@ public:
 	IBeacon(const IBeacon&); // copy constructor
 	~IBeacon() {};
 
+	void bindId() override;
+
 	void setUuid(const char* uuid);
 	void setMajor(const unsigned int major);
 	void setMinor(const unsigned int minor);
+	
+	// unique beacon identifier that allows us to distinguish beacon 
+	// and its measurements
+	const char* getId() const override;
 
 	const char* getUuid() const;
 	int getMajor() const;

@@ -14,12 +14,13 @@ BIP::Beacon::Beacon(const Beacon& beacon)
 	, height_(beacon.height_)
 	, rssiRef_(beacon.rssiRef_)
 	, pathLoss_(beacon.pathLoss_)
+	, mac_(beacon.mac_)
 {
 }
 
-void BIP::Beacon::setBeaconId(const std::string& beaconId)
+void BIP::Beacon::bindId()
 {
-	id_ = beaconId;
+	id_ = mac_;
 }
 
 void BIP::Beacon::setX(const double x)
@@ -47,9 +48,14 @@ void BIP::Beacon::setPathLoss(const double pathLoss)
 	pathLoss_ = pathLoss;
 }
 
+void BIP::Beacon::setMacAddr(const std::string& mac)
+{
+	mac_ = mac;
+}
+
 const char* BIP::Beacon::getId() const
 {
-	return id_.c_str();
+	return mac_.c_str();
 }
 
 double BIP::Beacon::getX() const
@@ -86,6 +92,16 @@ BIP::IBeacon::IBeacon(const IBeacon& iBeacon)
 	:Beacon(iBeacon), uuid_(iBeacon.uuid_),
 major_(iBeacon.major_), minor_(iBeacon.minor_)
 {
+}
+
+const char* BIP::IBeacon::getId() const
+{
+	return id_.c_str();
+}
+
+void BIP::IBeacon::bindId()
+{
+	id_ = uuid_ + std::to_string(major_) + std::to_string(minor_);
 }
 
 void BIP::IBeacon::setUuid(const char * uuid)
