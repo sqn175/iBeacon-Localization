@@ -8,21 +8,60 @@
 
 BIP::Trilateration::Trilateration()
 	: posX_(0.0), posY_(0.0), posZ_(0.0)
-	, groupInterval_(2000)
-	, curTimeStamp(0)
 	, measDiffThreshold_(10.0)
+	, groupInterval_(2000)
 	, nUsedBeacon_(-1)
 	, rssiThred_(-90)
+	, curTimeStamp_(0)
 {
+}
+
+BIP::Trilateration::Trilateration(std::string filename)
+	: posX_(0.0), posY_(0.0), posZ_(0.0)
+	, measDiffThreshold_(10.0)
+	, groupInterval_(2000)
+	, nUsedBeacon_(-1)
+	, rssiThred_(-90)
+	, curTimeStamp_(0)
+{
+	std::ifstream beaconFile(filename);
+	if (beaconFile.is_open())
+	{
+		std::string beaconLine;
+		IBeacon ibeacon;
+		// same uuid + major
+		if (getline(beaconFile, beaconLine))
+			ibeacon.setUuid(beaconLine.c_str());
+		if (getline(beaconFile, beaconLine))
+			ibeacon.setMajor(std::stoi(beaconLine));
+		// different minor
+		while (getline(beaconFile, beaconLine))
+		{
+			size_t sz1, sz2 = 0;
+			int minor = stoi(beaconLine, &sz1);
+			double x = stod(beaconLine.substr(sz1 + 3), &sz2);
+			double y = stod(beaconLine.substr(sz1 + 3 + sz2 + 3));
+			ibeacon.setMinor(minor);
+			ibeacon.bindId();
+			ibeacon.setX(x);
+			ibeacon.setY(y);
+			std::pair<std::string, IBeacon> thisIBeacon(ibeacon.getId(), ibeacon);
+			iBeaconMap_.insert(thisIBeacon);
+		}
+		beaconFile.close();
+	}
+
+	else std::cout << "Unable to open file: "<< filename;
 }
 
 BIP::Trilateration::Trilateration(const Trilateration& tri)
 	: posX_(tri.posX_), posY_(tri.posY_), posZ_(tri.posZ_)
-	, groupInterval_(tri.groupInterval_)
-	, curTimeStamp(tri.curTimeStamp)
 	, measDiffThreshold_(tri.measDiffThreshold_)
+	, groupInterval_(tri.groupInterval_)
 	, nUsedBeacon_(tri.nUsedBeacon_)
 	, rssiThred_(tri.rssiThred_)
+	, curTimeStamp_(tri.curTimeStamp_)
+	, iBeaconMap_(tri.iBeaconMap_)
 {
 }
 
@@ -55,8 +94,11 @@ void BIP::Trilateration::setRssiThred(const double rssiThred)
 
 void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 {
-	// TODO: filter out the unknown beacon
-	// TODO: filter out wrong data e.g. -128dBm
+	// filter out the unknown beacon
+	auto got = iBeaconMap_.find(curBeaconMeas.getBeaconId());
+	// this beacon is not listed in beaconMap
+	if (got == iBeaconMap_.end())
+		return;
 
 	// we kick out the measurements which timestamp is outdated
 	// the corresponding status is also updated 
@@ -92,7 +134,7 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 		}
 	}
 
-	auto it = measGroups_.find(curBeaconMeas.getBeaconPtr()->getId());
+	auto it = measGroups_.find(curBeaconMeas.getBeaconId());
 	if ( it != measGroups_.end() )
 	{// if measGroups_ contains the Beacon group which emitted this curBeaconMeas, we add the meas to the group
 		auto measList = &it->second;
@@ -100,6 +142,12 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 		// the new curBeaconMeas's status is unknown
 		auto listIt = --measList->end();
 		listIt->setStatus(0);
+		// kick out the rssi value which is lower than rssiThred_
+		if (listIt->getRssi() <= rssiThred_)
+		{
+			listIt->setStatus(-1);
+		}
+
 		// we define the status of the last measurement but one by measDiffThreshold_
 		if (measList->size() >= 3)
 		{
@@ -118,30 +166,19 @@ void BIP::Trilateration::addMeas(BeaconMeas curBeaconMeas)
 		// the first measurement, we set it as valid
 		curBeaconMeas.setStatus(0);
 		std::list<BeaconMeas> newGroup({curBeaconMeas });
-		measGroups_.insert(std::pair<std::string, std::list<BeaconMeas>>(curBeaconMeas.getBeaconPtr()->getId(), newGroup));
+		measGroups_.insert(std::pair<std::string, std::list<BeaconMeas>>(curBeaconMeas.getBeaconId(), newGroup));
 	}
 
-	// update curTimeStamp
-	curTimeStamp = curBeaconMeas.getTimeStamp();
+	// update curTimeStamp_
+	curTimeStamp_ = curBeaconMeas.getTimeStamp();
 }
 
 std::vector<double> BIP::Trilateration::calPos()
 {
 
-	std::vector<BeaconMeas> smoothedBM = prepareBeaconMeas();
+	std::vector<BeaconMeas> smoothedBM = prepareBeaconMeas1();
 	if (smoothedBM.size() == 0)
 		return std::vector<double>(2, 0.0);
-
-	if (smoothedBM.size() > 3)
-	{
-		std::vector<BeaconMeas> mostStrongMeas;
-		for (int i = smoothedBM.size() - 1; i >= 0; --i)
-		{
-			mostStrongMeas.push_back(smoothedBM.at(i));
-		}
-		return calWeightPos(mostStrongMeas);
-	}
-
 	// log
 	/*for (auto item : smoothedBM)
 		std::cout << item.getBeaconPtr()->getId() << ": " << std::fixed <<std::setprecision(0)<<item.getTimeStamp() << "  " << item.getRssi() << "\n";
@@ -161,16 +198,20 @@ std::vector<double> BIP::Trilateration::calWeightPos(const std::vector<BeaconMea
 
 	for (unsigned int i = 0; i < preparedBeaconMeas.size(); i++)
 	{
-		if (preparedBeaconMeas[i].getBeaconPtr() == nullptr)
+		auto got = iBeaconMap_.find(preparedBeaconMeas[i].getBeaconId());
+		// this beacon is not listed in beaconMap
+		if (got == iBeaconMap_.end())
 		{
-			// TODO: log
+			std::cout << preparedBeaconMeas[i].getBeaconId() << "not found in map\n";
+			continue;
 		}
+
 		// calculate probability of being at beacons x,y coordinates
 		weight[i] += 1.0 / (fabs(preparedBeaconMeas[i].getDist() *
 			normalizeCoefficient));
 
-		double beaconX = preparedBeaconMeas[i].getBeaconPtr()->getX();
-		double beaconY = preparedBeaconMeas[i].getBeaconPtr()->getY();
+		double beaconX = got->second.getX();
+		double beaconY = got->second.getY();
 
 		//find final coordinates according to probability
 		posXY.at(0) += weight[i] * beaconX;
@@ -190,12 +231,8 @@ std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas()
 	if (measGroups_.size() == 0)
 		std::cout << "measgroup contain no data.\n";
 
-	int index = 0;
 	for (auto it = measGroups_.begin(); it != measGroups_.end(); ++it)
 	{
-		if (nUsedBeacon_ != -1 && index >= nUsedBeacon_)
-			break;
-		++index;
 		auto measList = it->second;
 		int n = measList.size();
 		if (n == 0)
@@ -235,11 +272,89 @@ std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas()
 
 
 		// we have a delay of one measurement
-		BeaconMeas tmp(measList.back().getBeaconPtr(), wma, measList.back().getTimeStamp());
+		BeaconMeas tmp(it->first, wma, measList.back().getTimeStamp());
 		preparedBeaconMeas.push_back(tmp);
 	}
 	// sort preparedBeaconMeas into ascending order (e.g. from -100 to 0)
 	std::sort(preparedBeaconMeas.begin(), preparedBeaconMeas.end());
+
+	// we get the nUsedBeacon_ most strong rssi values;
+	if (nUsedBeacon_ != -1 && nUsedBeacon_ <= preparedBeaconMeas.size())
+	{
+		std::vector<BeaconMeas> split(preparedBeaconMeas.end() - nUsedBeacon_, preparedBeaconMeas.end());
+		return split;
+	}
+	return preparedBeaconMeas;
+}
+
+// exponential moving average£¬EMA
+std::vector<BIP::BeaconMeas> BIP::Trilateration::prepareBeaconMeas1()
+{
+	std::vector<BeaconMeas> preparedBeaconMeas;
+
+	// TODO: size = 0 case
+	if (measGroups_.size() == 0)
+		std::cout << "measgroup contain no data.\n";
+
+	for (auto it = measGroups_.begin(); it != measGroups_.end(); ++it)
+	{
+		auto measList = it->second;
+		int n = measList.size();
+		if (n == 0)
+			std::cout << "list contain no data.\n";
+		auto listIt = measList.begin();
+		for (; listIt != measList.end(); ++listIt)
+		{
+			if (listIt->getStatus() != 1)
+				--n;
+		}
+		double sum = 0;
+		--listIt;
+
+		double alpha = 2 / (n + 1);
+
+		for (int i = n; ; --listIt)
+		{
+			if (listIt->getStatus() == 1)
+			{
+				sum += pow(1 - alpha, n-i) *  listIt->getRssi();
+				--i;
+			}
+			if (listIt == measList.begin())
+				break;
+		}
+
+		if (n == 0)
+			continue;
+
+		double denominator = 0;
+		for (int i = 0; i < n; i++)
+			denominator += pow(1 - alpha, i);
+
+		double wma = sum / denominator;
+
+		// TODO: remove this log file
+		/*if (strcmp(it->second.front().getBeaconPtr()->getId(), "19:18:FC:00:E6:58") == 0)
+		{
+		std::ofstream curRssiFile("curRssi.txt", std::ofstream::app);
+		curRssiFile << wma << "\n";
+		curRssiFile.close();
+		}*/
+
+
+		// we have a delay of one measurement
+		BeaconMeas tmp(it->first, wma, measList.back().getTimeStamp());
+		preparedBeaconMeas.push_back(tmp);
+	}
+	// sort preparedBeaconMeas into ascending order (e.g. from -100 to 0)
+	std::sort(preparedBeaconMeas.begin(), preparedBeaconMeas.end());
+
+	// we get the nUsedBeacon_ most strong rssi values;
+	if (nUsedBeacon_ != -1 && nUsedBeacon_ <= preparedBeaconMeas.size())
+	{
+		std::vector<BeaconMeas> split(preparedBeaconMeas.end() - nUsedBeacon_, preparedBeaconMeas.end());
+		return split;
+	}
 	return preparedBeaconMeas;
 }
 
@@ -257,4 +372,10 @@ int BIP::Trilateration::getNUsedbeacon() const
 double BIP::Trilateration::getRssiThred() const
 {
 	return rssiThred_;
+}
+
+void BIP::Trilateration::addMeas(std::string beaconId, double rssi, double timeStamp)
+{
+	BeaconMeas bm(beaconId, rssi, timeStamp);
+	addMeas(bm);
 }

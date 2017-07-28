@@ -136,17 +136,16 @@ int BIP::IBeacon::getMinor() const
 }
 
 BIP::BeaconMeas::BeaconMeas()
-	: beaconPtr_(nullptr)
-	, rssi_(0.0)
+	: rssi_(0.0)
 	, dist_(0.0)
 	, timeStamp_(0.0)
 	, status_(0)
 {
 }
 
-BIP::BeaconMeas::BeaconMeas(Beacon* beacon, double rssi, double timeStamp)
+BIP::BeaconMeas::BeaconMeas(std::string id, double rssi, double timeStamp)
 {
-	beaconPtr_ = beacon;
+	beaconId_ = id;
 	rssi_ = rssi;
 	timeStamp_ = timeStamp;
 	dist_ = this->calcDistFromRssi();
@@ -154,7 +153,7 @@ BIP::BeaconMeas::BeaconMeas(Beacon* beacon, double rssi, double timeStamp)
 }
 
 BIP::BeaconMeas::BeaconMeas(const BeaconMeas& beaconMeas)
-	: beaconPtr_(beaconMeas.beaconPtr_)
+	: beaconId_(beaconMeas.beaconId_)
 	, rssi_(beaconMeas.rssi_)
 	, dist_(beaconMeas.dist_)
 	, timeStamp_(beaconMeas.timeStamp_)
@@ -164,12 +163,12 @@ BIP::BeaconMeas::BeaconMeas(const BeaconMeas& beaconMeas)
 
 BIP::BeaconMeas::~BeaconMeas()
 {
-	beaconPtr_ = nullptr;
+	
 }
 
-void BIP::BeaconMeas::setBeaconPtr(const Beacon* beaconPtr)
+void BIP::BeaconMeas::setBeaconId(const char* id)
 {
-	beaconPtr_ = const_cast<Beacon*> (beaconPtr);
+	beaconId_ = id;
 }
 
 void BIP::BeaconMeas::setRssi(const double rssi)
@@ -188,9 +187,9 @@ void BIP::BeaconMeas::setStatus(const int stat)
 	status_ = stat;
 }
 
-BIP::Beacon* BIP::BeaconMeas::getBeaconPtr() const
+const char* BIP::BeaconMeas::getBeaconId() const
 {
-	return beaconPtr_;
+	return beaconId_.c_str();
 }
 
 double BIP::BeaconMeas::getRssi() const
@@ -225,15 +224,13 @@ bool BIP::BeaconMeas::operator>(const BeaconMeas& entry) const
 
 double BIP::BeaconMeas::calcDistFromRssi() const
 {
-	return pow(10, (beaconPtr_->getRssiRef() - rssi_) / (10 * beaconPtr_->getPathLoss()));
+	// we specify this two parameters
+	// in fact, we dont have time to calibrate this two parameters of every iBeacon
+	double rssiRef = -59;
+	double pathLoss = 2.5;
+	return pow(10, (rssiRef - rssi_) / (10 * pathLoss));
 }
 
-double BIP::BeaconMeas::calcPlanarDistFromRssi() const
-{
-	double distance = calcDistFromRssi();
-	// TODO: check if distance > height
-	return sqrt(distance*distance - getBeaconPtr()->getHeight()*getBeaconPtr()->getHeight());
-}
 
 
 

@@ -92,16 +92,16 @@ class BeaconMeas
 {
 public:
 	BeaconMeas();
-	BeaconMeas(Beacon* beacon, double rssi, double timeStamp);
+	BeaconMeas(std::string id, double rssi, double timeStamp);
 	BeaconMeas(const BeaconMeas&);
 	~BeaconMeas();
 
-	void setBeaconPtr(const Beacon* beaconPtr);
+	void setBeaconId(const char* id);
 	void setRssi(const double rssi);
 	void setTimeStamp(const double timeStamp);
 	void setStatus(const int stat);
 
-	Beacon* getBeaconPtr() const;
+	const char* getBeaconId() const;
 	double getRssi() const;
 	double getDist() const;
 	const double getTimeStamp() const;
@@ -110,12 +110,14 @@ public:
 	bool operator<(const BeaconMeas& entry)const;
 	bool operator>(const BeaconMeas& entry)const;
 
+	//// query the beaconMap to find the beacon according to beaconId_
+	//Beacon* getBeaconPtr();
+
 	// calculate the corresponding distance of rssi value
 	double calcDistFromRssi() const;			 // 3-dimension distance
-	double calcPlanarDistFromRssi() const;       // planar distance, height ignored
 
 private:
-	Beacon* beaconPtr_;			// pointer to beacon from which we got measurement
+	std::string beaconId_;      // the beacon unique id
 	double rssi_;				// RSSI of the measurement
 	double dist_;				// the corresponding distance of rssi
 	double timeStamp_;			// timestamp of current measurement, epoch time in milliseconds, e.g.1499218065493
