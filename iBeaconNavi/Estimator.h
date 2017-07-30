@@ -8,6 +8,7 @@
 
 
 #include "Beacon.h"
+#include "Matrix.h"
 
 #include <math.h>
 
@@ -16,19 +17,21 @@
 #include <map>
 #include <fstream>
 #include <unordered_map>
-
+#include <thread>
+#include <algorithm>
+#include <math.h>       /* fabs */
+#include <iostream>
 
 namespace BIP {
 
-class Trilateration
+class Estimator
 {
 public:
-	Trilateration();
-	// construct Trilateration using a file 
-	// filename stores the iBeacon info
-	explicit Trilateration(std::string filename);
-	Trilateration(const Trilateration&);
-	~Trilateration() {};
+
+	Estimator();
+	explicit Estimator(std::string beaconFile);
+	Estimator(const Estimator&);
+	~Estimator() {};
 
 	// get things
 	double getMeasDiffThred() const;
@@ -49,6 +52,10 @@ public:
 	// set the number of beacons used to calculate the planar coordinates
 	void setNUsedBeacon(const int);
 
+	// set the dt_, the interval between function calls of est()
+	// we smooth the trajectory every dt milliseconds
+	void setDt(const double);
+
 	// set the rssi thredhold
 	// kick out the rssi value which is lower than rssiThred_
 	void setRssiThred(const double);
@@ -56,12 +63,15 @@ public:
 	// add a new beacon measurement
 	void addMeas(std::string beaconId, double rssi, double timeStamp);
 
-	// calculate the coordinate
+	// estimate the coordinates, we get the smoothed trajectory
+	std::vector<double> est();
+
+	// calculate the coordinates, we get the raw jumping trajectory
 	std::vector<double> calPos();
 
 private:
 
-	// the coordinates of device derived from Trilateration measurements (meter)
+	// the coordinates of device derived from Estimator measurements (meter)
 	double posX_, posY_, posZ_;
 
 	// we filter out the measurements, 
@@ -104,6 +114,20 @@ private:
 	// calculate coordiante, lower distance then bigger weight, closer to that beacon
 	std::vector<double> calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas);
 
+	// kalman filter
+	Matrix<double, 4, 1> x_;  // States: x(m), y, Vx(m/s), Vy
+	Matrix<double, 4, 4> mA_;      // Process matrix: x_k = A*x_{k-1} + w
+	Matrix<double, 4, 4> mQ_;	  // Process noise covariance w~N(0,mQ)
+	Matrix<double, 2, 4> mH_;	  // measurement matrix z = H*x + v
+	Matrix<double, 2, 2> mR_;	  // measurement nosie covariance v~N(0,mR)
+
+	Matrix<double, 4, 4> mP_;	  // Estimate error covariance
+
+	double dt_;					  // Time step, in milliseconds
+
+	int kfState_;			      // 0, wait for initial state guess
+								  // 1, we have initial state guess, let's use this kf
+	std::vector<std::vector<double>> initPoses_;  // we need the first 4 calculated coordinates to guess the initail pos
 };
 
 } // namespace BIP

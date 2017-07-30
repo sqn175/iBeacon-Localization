@@ -24,15 +24,18 @@
     <ClCompile Include="Beacon.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Algorithm.cpp">
+    <ClCompile Include="Estimator.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Algorithm.h">
+    <ClInclude Include="Beacon.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Beacon.h">
+    <ClInclude Include="Matrix.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Estimator.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

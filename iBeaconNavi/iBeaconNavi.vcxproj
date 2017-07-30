@@ -142,11 +142,12 @@
   <ItemGroup>
     <ClCompile Include="Beacon.cpp" />
     <ClCompile Include="TestTrilateration.cpp" />
-    <ClCompile Include="Algorithm.cpp" />
+    <ClCompile Include="Estimator.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Algorithm.h" />
+    <ClInclude Include="Estimator.h" />
     <ClInclude Include="Beacon.h" />
+    <ClInclude Include="Matrix.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -2,8 +2,6 @@
 *
 * Author: Qin Shi
 * Date: 2017/06/29
-* A modified version of
-* https://github.com/Navigine/Indoor-navigation-algorithms
 *
 */
 
