@@ -293,7 +293,3 @@ __pycache__/
 *.btm.cs
 *.odx.cs
 *.xsd.cs
-
-# test files
-*.txt
-*.csv
