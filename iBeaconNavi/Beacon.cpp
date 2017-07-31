@@ -202,7 +202,7 @@ double BIP::BeaconMeas::getDist() const
 	return dist_;
 }
 
-const double BIP::BeaconMeas::getTimeStamp() const
+double BIP::BeaconMeas::getTimeStamp() const
 {
 	return timeStamp_;
 }

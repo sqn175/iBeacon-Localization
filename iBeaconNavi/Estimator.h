@@ -1,4 +1,4 @@
-/** Algorithm.h
+/** Estimator.h
 *
 * Author: Qin Shi
 * Date: 2017/06/29
@@ -9,8 +9,6 @@
 
 #include "Beacon.h"
 #include "Matrix.h"
-
-#include <math.h>
 
 #include <vector>
 #include <list>

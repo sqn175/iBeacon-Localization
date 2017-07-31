@@ -63,6 +63,7 @@ BIP::Estimator::Estimator(const Estimator& est)
 	, curTimeStamp_(est.curTimeStamp_)
 	, iBeaconMap_(est.iBeaconMap_)
 	, dt_(est.dt_)
+	, kfState_(0)
 {
 }
 

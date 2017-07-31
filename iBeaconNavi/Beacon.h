@@ -7,6 +7,7 @@
 
 #pragma once
 #include <string>
+#include <math.h>
 
 namespace BIP {
 
@@ -102,7 +103,7 @@ public:
 	const char* getBeaconId() const;
 	double getRssi() const;
 	double getDist() const;
-	const double getTimeStamp() const;
+	double getTimeStamp() const;
 	int getStatus() const;
 
 	bool operator<(const BeaconMeas& entry)const;

@@ -1,5 +1,4 @@
 #include "Estimator.h"
-#include "Beacon.h"
 
 #include <fstream>
 #include <iostream>
