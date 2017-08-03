@@ -1,6 +1,6 @@
 # iBeaconNavi
 
-An iBeacon indoor positioning algorithm. The algorithm analyses the iBeacon rssi value and estimates the current planar position.
+An iBeacon indoor positioning algorithm. The algorithm analyses the iBeacon rssi values and estimates the current planar position.
 
 ## Key Methods
 
