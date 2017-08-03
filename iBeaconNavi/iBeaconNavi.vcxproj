@@ -141,7 +141,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Beacon.cpp" />
-    <ClCompile Include="TestTrilateration.cpp" />
+    <ClCompile Include="Example.cpp" />
     <ClCompile Include="Estimator.cpp" />
   </ItemGroup>
   <ItemGroup>

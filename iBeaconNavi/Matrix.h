@@ -35,6 +35,7 @@ DAMAGES(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 
 #pragma once
 #include <cstring>
+#include <limits>
 
 namespace BIP
 {
@@ -226,13 +227,9 @@ public:
 
 template<typename Type>
 bool is_finite(Type x) {
-#if defined (__PX4_NUTTX)
-	return PX4_ISFINITE(x);
-#elif defined (__PX4_QURT)
-	return __builtin_isfinite(x);
-#else
-	return std::isfinite(x);
-#endif
+	if (x == std::numeric_limits<Type>::infinity())
+		return false;
+	return true;
 }
 
 

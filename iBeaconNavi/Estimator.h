@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <math.h>       /* fabs */
 #include <iostream>
+#include<cstdlib>
 
 namespace BIP {
 
@@ -113,7 +114,7 @@ private:
 	std::vector<double> calWeightPos(const std::vector<BeaconMeas> preparedBeaconMeas);
 
 	// kalman filter
-	Matrix<double, 4, 1> x_;  // States: x(m), y, Vx(m/s), Vy
+	Matrix<double, 4, 1> x_;       // States: x(m), y, Vx(m/s), Vy
 	Matrix<double, 4, 4> mA_;      // Process matrix: x_k = A*x_{k-1} + w
 	Matrix<double, 4, 4> mQ_;	  // Process noise covariance w~N(0,mQ)
 	Matrix<double, 2, 4> mH_;	  // measurement matrix z = H*x + v

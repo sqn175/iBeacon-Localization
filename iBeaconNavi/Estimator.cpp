@@ -22,23 +22,35 @@ BIP::Estimator::Estimator(std::string beaconFilename)
 	, dt_(1000)
 	, kfState_(0)
 {
-	std::ifstream beaconFile(beaconFilename);
-	if (beaconFile.is_open())
-	{
+	std::stringstream beaconFile(beaconFilename);
 		std::string beaconLine;
 		IBeacon ibeacon;
 		// same uuid + major
-		if (getline(beaconFile, beaconLine))
+		if (getline(beaconFile, beaconLine, '\n'))
 			ibeacon.setUuid(beaconLine.c_str());
-		if (getline(beaconFile, beaconLine))
-			ibeacon.setMajor(std::stoi(beaconLine));
+		if (getline(beaconFile, beaconLine, '\n'))
+			ibeacon.setMajor(std::atoi(beaconLine.c_str()));
 		// different minor
-		while (getline(beaconFile, beaconLine))
+		while (getline(beaconFile, beaconLine, '\n'))
 		{
-			size_t sz1, sz2 = 0;
+			/*size_t sz1, sz2 = 0;
 			int minor = stoi(beaconLine, &sz1);
-			double x = stod(beaconLine.substr(sz1 + 3), &sz2);
-			double y = stod(beaconLine.substr(sz1 + 3 + sz2 + 3));
+			double x = std::stod(beaconLine.substr(sz1 + 3), &sz2);
+			double y = std::stod(beaconLine.substr(sz1 + 3 + sz2 + 3));*/
+			// no C++11 features
+			std::stringstream stream(beaconLine);
+			std::string str;
+			std::getline(stream, str, ' ');
+			int minor = std::atoi(str.c_str());
+			std::getline(stream, str, ';');
+			std::string xStr = str.substr(2);
+			double x = std::atof(xStr.c_str());
+			std::getline(stream, str);
+			std::string yStr = str.substr(2);
+			double y = std::atof(yStr.c_str());
+
+
+
 			ibeacon.setMinor(minor);
 			ibeacon.bindId();
 			ibeacon.setX(x);
@@ -46,10 +58,6 @@ BIP::Estimator::Estimator(std::string beaconFilename)
 			std::pair<std::string, IBeacon> thisIBeacon(ibeacon.getId(), ibeacon);
 			iBeaconMap_.insert(thisIBeacon);
 		}
-		beaconFile.close();
-	}
-
-	else std::cout << "Unable to open file: " << beaconFilename;
 
 }
 

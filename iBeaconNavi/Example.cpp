@@ -10,15 +10,15 @@ void rawest()
 {
 	int measCnt = 0;  // iBeacon measurement count
 
-					  // initialize algorithm
+	// initialize algorithm
 	BIP::Estimator tri("deqingBeacon.txt");
-	tri.setGroupInterval(1500);
+	tri.setGroupInterval(2000);
 	tri.setMeasDiffThred(10);
 	tri.setNUsedBeacon(-1);
 	tri.setRssiThred(-100);
 
 	// rssi value file
-	std::string fileName = "F:\\iBeacon\\20170726deqing\\scan_bluetoothline11.txt";
+	std::string fileName = "F:\\iBeacon\\20170726deqing\\scan_bluetoothstatic1.txt";
 
 	// read beacon measurements from file
 	std::ifstream bleScanFile(fileName);
@@ -46,7 +46,7 @@ void rawest()
 		{
 			measCnt++;
 			std::cout << "------New Measurement:" << measCnt << "------\n";
-			double timeStamp = stod(line);
+			double timeStamp = std::stod(line);
 			getline(bleScanFile, line);
 			getline(bleScanFile, line);
 			getline(bleScanFile, line);
@@ -58,7 +58,7 @@ void rawest()
 			std::string id = uuid + major + minor;
 
 			getline(bleScanFile, line);
-			double rssi = stoi(line.substr(17, 3));
+			double rssi = std::stoi(line.substr(17, 3));
 
 			//if (strcmp(id.c_str(), "uuid1008053279") == 0)
 			//{
@@ -90,11 +90,11 @@ void smoothest()
 {
 	int measCnt = 0;  // iBeacon measurement count
 
-					  // initialize algorithm
-	BIP::Estimator estimator("deqingBeacon.txt");
-	estimator.setGroupInterval(1500);
+	// initialize algorithm
+	BIP::Estimator estimator("fda50693-a4e2-4fb1-afcf-c6eb07647825\n10103\n62416 X:13356763.312410861; Y:3549864.575675777");
+	estimator.setGroupInterval(2000);
 	estimator.setMeasDiffThred(10);
-	estimator.setNUsedBeacon(-1);
+	estimator.setNUsedBeacon(10);
 	estimator.setRssiThred(-100);
 	estimator.setDt(1000);
 
@@ -127,7 +127,7 @@ void smoothest()
 		{
 			measCnt++;
 			std::cout << "------New Measurement:" << measCnt << "------\n";
-			double timeStamp = stod(line);
+			double timeStamp = std::stod(line);
 			getline(bleScanFile, line);
 			getline(bleScanFile, line);
 			getline(bleScanFile, line);
@@ -139,7 +139,7 @@ void smoothest()
 			std::string id = uuid + major + minor;
 
 			getline(bleScanFile, line);
-			double rssi = stoi(line.substr(17, 3));
+			double rssi = std::stoi(line.substr(17, 3));
 
 			//if (strcmp(id.c_str(), "uuid1008053279") == 0)
 			//{

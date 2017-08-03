@@ -18,14 +18,14 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="TestTrilateration.cpp">
-      <Filter>UnitTest</Filter>
-    </ClCompile>
     <ClCompile Include="Beacon.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Estimator.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Example.cpp">
+      <Filter>UnitTest</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
